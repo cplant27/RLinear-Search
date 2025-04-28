@@ -1,7 +1,7 @@
 import random
 from typing import Any, Dict, List, Tuple
 
-from environment import InfiniteLinearSearchEnv
+from src.environment import InfiniteLinearSearchEnv
 
 
 def initialize_q_table(

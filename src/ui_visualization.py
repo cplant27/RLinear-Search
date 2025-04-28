@@ -1,9 +1,9 @@
 import tkinter as tk
 from typing import Any, Dict, List, Tuple
 
-from environment import InfiniteLinearSearchEnv
-from qlearning import observation_to_state
-from ui_utils import print_info
+from src.environment import InfiniteLinearSearchEnv
+from src.qlearning import observation_to_state
+from src.ui_utils import print_info
 
 
 class EnvironmentVisualizer:

@@ -1,6 +1,6 @@
-from environment import InfiniteLinearSearchEnv
-from qlearning import initialize_q_table
-from ui_main import load_q_table_wrapped, test_policy_ui
+from src.environment import InfiniteLinearSearchEnv
+from src.qlearning import initialize_q_table
+from src.ui_main import load_q_table_wrapped, test_policy_ui
 
 
 def main(load_weights=None):
@@ -21,8 +21,8 @@ def main(load_weights=None):
         target_range=500,  # Range for initial target placement (reduced from 1000)
         region_size=50,
         move_target=True,
-        target_move_prob=0.2,  # Target moves with 20% probability each step (increased from 5%)
-        target_speed=3,  # Max 3 units per move
+        target_move_prob=0.02,  # Target moves with 2% probability each step (reduced from 5%)
+        target_speed=1,  # Max 1 unit per move (reduced from 3)
     )
 
     # Either load Q-table from file or train from scratch
@@ -52,8 +52,16 @@ def main(load_weights=None):
     print("Training complete. Resetting environment for testing...")
     # Reset environment for testing and launch the UI visualization.
     _, _ = env.reset()
-    print(f"Testing learned policy: Target is at position {env.target}")
-    test_policy_ui(env, Q, actions, delay=1)  # Faster movement in testing phase
+
+    # Display the target positions
+    target_positions = ", ".join(
+        [f"Target {id} at position {pos}" for id, pos in env.targets]
+    )
+    print(f"Testing learned policy: {target_positions}")
+
+    test_policy_ui(
+        env, Q, actions, delay=500
+    )  # Set delay to 500ms for slower visualization
 
     print("Visualization complete.")
 

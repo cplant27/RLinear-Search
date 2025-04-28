@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Tuple
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from environment import InfiniteLinearSearchEnv
-from qlearning import observation_to_state
-from ui_components import (
+from src.environment import InfiniteLinearSearchEnv
+from src.qlearning import observation_to_state
+from src.ui_components import (
     create_agent_marker,
     create_canvas,
     create_info_frame,
@@ -15,9 +15,9 @@ from ui_components import (
     create_path_line,
     create_target_marker,
 )
-from ui_training import train_environment
-from ui_utils import load_q_table
-from ui_visualization import EnvironmentVisualizer, update_step
+from src.ui_training import train_environment
+from src.ui_utils import load_q_table
+from src.ui_visualization import EnvironmentVisualizer, update_step
 
 
 def test_policy_ui(

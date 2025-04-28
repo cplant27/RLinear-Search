@@ -4,10 +4,10 @@ import tkinter as tk
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple
 
-from environment import InfiniteLinearSearchEnv
-from qlearning import observation_to_state
-from ui_utils import save_q_table
-from ui_visualization import EnvironmentVisualizer
+from src.environment import InfiniteLinearSearchEnv
+from src.qlearning import observation_to_state
+from src.ui_utils import save_q_table
+from src.ui_visualization import EnvironmentVisualizer
 
 
 def train_environment(
