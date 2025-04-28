@@ -15,14 +15,16 @@ def main(load_weights=None):
     num_episodes = 1000  # Number of training episodes
 
     print("Initializing search and rescue environment...")
-    # Initialize the environment with infinite line and moving target
+    # Initialize the environment with infinite line and moving targets
     env = InfiniteLinearSearchEnv(
         max_steps=5000,  # Maximum steps per episode
-        target_range=500,  # Range for initial target placement (reduced from 1000)
+        target_range=1000,  # Range for initial target placement (doubled from 500 to 1000)
         region_size=50,
         move_target=True,
-        target_move_prob=0.02,  # Target moves with 2% probability each step (reduced from 5%)
-        target_speed=1,  # Max 1 unit per move (reduced from 3)
+        target_move_prob=0.02,  # Target moves with 2% probability each step
+        target_speed=1,  # Max 1 unit per move
+        num_targets=2,  # Use 2 targets
+        sensing_range=50,  # Agent can sense targets within 50 units
     )
 
     # Either load Q-table from file or train from scratch

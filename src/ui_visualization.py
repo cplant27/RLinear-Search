@@ -18,11 +18,12 @@ class EnvironmentVisualizer:
         # Visual elements
         self.agent_marker = None
         self.agent_label = None
-        self.target_marker = None
-        self.target_label = None
+        self.target_markers = []  # List of target markers
+        self.target_labels = []  # List of target labels
         self.path_line = None
         self.direction_markers = []
         self.grid_items = []
+        self.sensing_indicator = None  # Visual indicator for sensing
 
         # Tracking
         self.path_points = []
@@ -33,6 +34,9 @@ class EnvironmentVisualizer:
         # Agent/Target dimensions
         self.agent_radius = 6
         self.target_radius = 6
+
+        # Target colors - for differentiation
+        self.target_colors = ["green", "purple", "orange", "cyan", "yellow"]
 
     def x_to_canvas(self, actual_position: int) -> int:
         """Convert the actual position to an x-coordinate on the canvas."""
@@ -47,15 +51,16 @@ class EnvironmentVisualizer:
         scale = self.canvas_width / visible_range
         return int(canvas_x / scale + self.current_min_visible)
 
-    def update_visible_range(self, position: int, target_pos: int = None) -> bool:
+    def update_visible_range(self, position: int, targets=None) -> bool:
         """Update the visible range based on agent and target positions."""
-        # Ensure both agent and target are visible when possible
+        # Ensure both agent and all targets are visible when possible
         min_pos = position
         max_pos = position
 
-        if target_pos is not None:
-            min_pos = min(min_pos, target_pos)
-            max_pos = max(max_pos, target_pos)
+        if targets:
+            for _, target_pos in targets:
+                min_pos = min(min_pos, target_pos)
+                max_pos = max(max_pos, target_pos)
 
         # Add margins
         margin = 100
@@ -71,7 +76,7 @@ class EnvironmentVisualizer:
             # Keep visible range reasonable
             visible_range = self.current_max_visible - self.current_min_visible
             if visible_range > 2000:
-                # If range is too large, center on agent and target
+                # If range is too large, center on agent and targets
                 center = (min_pos + max_pos) // 2
                 self.current_min_visible = center - 1000
                 self.current_max_visible = center + 1000
@@ -205,6 +210,7 @@ class EnvironmentVisualizer:
         reward=0.0,
         search_phase=0,
         target_found=False,
+        sensing_info=None,
     ):
         """Update information panel with current status."""
         variables["steps"].set(f"Steps: {steps}")
@@ -237,11 +243,39 @@ class EnvironmentVisualizer:
             else:
                 variables["phase"].set("Phase: Unknown")
 
+        # Update sensing information if provided
+        if sensing_info and "sensing_info" in variables:
+            dist, direction = sensing_info
+            if dist > 0:
+                dir_str = (
+                    "Left" if direction < 0 else "Right" if direction > 0 else "None"
+                )
+                variables["sensing_info"].set(
+                    f"Sensing: Target {dir_str} at distance {dist:.1f}"
+                )
+            else:
+                variables["sensing_info"].set("Sensing: No targets in range")
+
     def clear_markers(self):
         """Clear all direction markers."""
         for marker in self.direction_markers:
             self.canvas.delete(marker)
         self.direction_markers.clear()
+
+        # Clear target markers
+        for marker in self.target_markers:
+            self.canvas.delete(marker)
+        self.target_markers.clear()
+
+        # Clear target labels
+        for label in self.target_labels:
+            self.canvas.delete(label)
+        self.target_labels.clear()
+
+        # Clear sensing indicator
+        if self.sensing_indicator:
+            self.canvas.delete(self.sensing_indicator)
+            self.sensing_indicator = None
 
     def reset_path(self):
         """Reset the path tracking."""
@@ -265,29 +299,138 @@ class EnvironmentVisualizer:
         self.update_path(x, self.y_position)
         return x
 
-    def update_target_position(self, position: int):
-        """Update the target marker's position on the canvas."""
+    def create_target_markers(self, targets, canvas):
+        """Create markers for all targets."""
+        self.target_markers = []
+        self.target_labels = []
+
+        for i, (target_id, target_pos) in enumerate(targets):
+            color_idx = i % len(self.target_colors)
+            color = self.target_colors[color_idx]
+
+            x = self.x_to_canvas(target_pos)
+            marker = canvas.create_oval(
+                x - self.target_radius,
+                self.y_position - self.target_radius,
+                x + self.target_radius,
+                self.y_position + self.target_radius,
+                fill=color,
+                outline="black",
+                tags=f"target_{target_id}",
+            )
+
+            label = canvas.create_text(
+                x,
+                self.y_position - self.target_radius - 10,
+                text=f"Target {target_id}",
+                font=("Arial", 8),
+                tags=f"target_label_{target_id}",
+            )
+
+            self.target_markers.append(marker)
+            self.target_labels.append(label)
+
+    def update_targets_positions(
+        self, targets, targets_found=None, targets_rescued=None
+    ):
+        """Update all target markers' positions."""
+        for i, (target_id, target_pos) in enumerate(targets):
+            if i < len(self.target_markers):
+                x = self.x_to_canvas(target_pos)
+
+                # Update target marker position
+                self.canvas.coords(
+                    self.target_markers[i],
+                    x - self.target_radius,
+                    self.y_position - self.target_radius,
+                    x + self.target_radius,
+                    self.y_position + self.target_radius,
+                )
+
+                # Update target label position
+                self.canvas.coords(
+                    self.target_labels[i], x, self.y_position - self.target_radius - 10
+                )
+
+                # Change color based on target state
+                if (
+                    targets_found
+                    and i < len(targets_found)
+                    and targets_found[target_id]
+                ):
+                    if targets_rescued and targets_rescued[target_id]:
+                        # Target rescued
+                        self.canvas.itemconfig(
+                            self.target_markers[i], fill="lightgray", outline="gray"
+                        )
+                    else:
+                        # Target found but not rescued
+                        self.canvas.itemconfig(self.target_markers[i], fill="yellow")
+
+    def update_sensing_indicator(self, position, sensing_info):
+        """Update the visual indicator for sensing nearby targets."""
         x = self.x_to_canvas(position)
-        self.canvas.coords(
-            self.target_marker,
-            x - self.target_radius,
-            self.y_position - self.target_radius,
-            x + self.target_radius,
-            self.y_position + self.target_radius,
-        )
-        self.canvas.coords(
-            self.target_label, x, self.y_position - self.target_radius - 10
-        )
-        return x
+        dist, direction = sensing_info
+
+        # Remove existing indicator
+        if self.sensing_indicator:
+            self.canvas.delete(self.sensing_indicator)
+            self.sensing_indicator = None
+
+        # Only show indicator if target is detected
+        if dist > 0:
+            # Create a directional indicator
+            radius = 40  # Size of sensing indicator
+            angle = 0 if direction > 0 else 180  # Direction angle (right or left)
+
+            # Create a partial circle segment to show direction
+            # Use a light blue semi-transparent indicator
+            start_angle = angle - 45
+            end_angle = angle + 45
+
+            # Create a circle segment
+            self.sensing_indicator = self.canvas.create_arc(
+                x - radius,
+                self.y_position - radius,
+                x + radius,
+                self.y_position + radius,
+                start=start_angle,
+                extent=90,
+                outline="blue",
+                fill="lightblue",
+                width=2,
+                style="arc",
+                tags="sensing",
+            )
+
+            # Add a line to indicate direction more clearly
+            line_len = 30
+            dx = line_len * direction  # Direction multiplier
+            line = self.canvas.create_line(
+                x,
+                self.y_position,
+                x + dx,
+                self.y_position,
+                fill="blue",
+                width=2,
+                arrow=tk.LAST,
+                tags="sensing",
+            )
+
+            # Group both elements
+            if not self.sensing_indicator:
+                self.sensing_indicator = line
+            else:
+                # Remember both elements to delete later
+                self.direction_markers.append(line)
 
     def highlight_success(self, found=True):
-        """Highlight the agent when the target is found."""
+        """Highlight the agent when a target is found."""
         if found:
             self.canvas.itemconfig(self.agent_marker, fill="blue")
-            self.canvas.itemconfig(self.target_marker, fill="yellow")
+            # Target colors are handled in update_targets_positions
         else:
             self.canvas.itemconfig(self.agent_marker, fill="red")
-            self.canvas.itemconfig(self.target_marker, fill="green")
 
 
 def update_step(
@@ -315,14 +458,20 @@ def update_step(
     steps += 1
 
     # Check if visible range needs updating
-    range_changed = visualizer.update_visible_range(env.current_position, env.target)
+    range_changed = visualizer.update_visible_range(env.current_position, env.targets)
     if range_changed:
         # Update grid and target marker
         visualizer.update_grid()
 
     # Update the agent and target markers
     agent_x = visualizer.update_agent_position(env.current_position)
-    target_x = visualizer.update_target_position(env.target)
+    visualizer.update_targets_positions(
+        env.targets, env.targets_found, env.targets_rescued
+    )
+
+    # Update sensing indicator
+    sensing_info = info.get("sensing_info", (-1, 0))
+    visualizer.update_sensing_indicator(env.current_position, sensing_info)
 
     # Update phases based on search phase
     if info.get("search_phase", 0) != visualizer.last_search_phase:
@@ -336,11 +485,21 @@ def update_step(
         reward=reward,
         search_phase=info.get("search_phase", 0),
         target_found=env.target_found,
+        sensing_info=sensing_info,
     )
 
     # Update info labels
     variables["current_pos"].set(f"Agent Position: {env.current_position}")
-    variables["target_pos"].set(f"Target Position: {env.target}")
+
+    # Display all target positions with status
+    targets_info = ", ".join(
+        [
+            f"Target {id}: {pos}{' (F)' if env.targets_found[id] else ''}{' (R)' if env.targets_rescued[id] else ''}"
+            for id, pos in env.targets
+        ]
+    )
+    variables["target_pos"].set(f"Targets: {targets_info}")
+
     variables["range"].set(
         f"Visible Range: [{visualizer.current_min_visible}, {visualizer.current_max_visible}]"
     )
@@ -350,24 +509,34 @@ def update_step(
     variables["visit_count"].set(f"Regions visited: {regions_visited_count}")
     variables["regions"].set(f"Regions: {regions_visited_count}")
 
-    # Check if the agent is on the target
-    if env.target_found and env.rescue_complete:
+    # Check if the agent completed a rescue
+    if env.rescue_complete:
         # Change the agent marker color to indicate success
         visualizer.highlight_success(True)
-        print(f"Mission complete! Agent returned to base in {steps} steps!")
+        rescued_count = sum(env.targets_rescued)
+        if env.all_targets_rescued:
+            status_msg = f"Complete success! All {rescued_count} targets rescued in {steps} steps!"
+        else:
+            status_msg = f"Partial success! {rescued_count} of {env.num_targets} targets rescued in {steps} steps!"
+
+        print(status_msg)
 
         # Create a success message on the canvas
         visualizer.canvas.create_text(
             visualizer.canvas_width // 2,
             visualizer.y_position - 60,
-            text=f"Mission complete in {steps} steps!",
+            text=status_msg,
             font=("Arial", 16, "bold"),
             fill="green",
         )
         return steps
 
     if done:
-        print(f"Target found at position {env.current_position} in {steps} steps!")
+        rescued_count = sum(env.targets_rescued)
+        found_targets = [i for i, found in enumerate(env.targets_found) if found]
+        print(
+            f"Target(s) {found_targets} found and {rescued_count} returned to base in {steps} steps!"
+        )
         visualizer.highlight_success(True)
         return steps
 

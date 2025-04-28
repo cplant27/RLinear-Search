@@ -54,3 +54,7 @@ dmypy.json
 
 # VSCode settings (optional)
 .vscode/
+
+# Ignore the saved weights
+saved_weights/
+

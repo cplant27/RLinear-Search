@@ -37,7 +37,7 @@ def test_policy_ui(
 
     The canvas displays:
       - A red circle representing the agent.
-      - A green circle representing the target (which can move).
+      - Green circles representing the targets (which can move).
       - Visual indicators of the agent's path.
       - Markers for phase transitions.
 
@@ -62,13 +62,15 @@ def test_policy_ui(
     # Create the main window
     root = tk.Tk()
     root.title("Search and Rescue - Q-learning Visualization")
-    root.geometry(f"{canvas_width}x{canvas_height + 200}")
+    root.geometry(
+        f"{canvas_width}x{canvas_height + 250}"
+    )  # Increased height for sensing info
 
     # Create StringVars for UI labels
     variables = {
         "status": tk.StringVar(value="Initializing..."),
         "current_pos": tk.StringVar(value="Agent Position: 0"),
-        "target_pos": tk.StringVar(value="Target Position: 0"),
+        "target_pos": tk.StringVar(value="Targets: "),
         "steps": tk.StringVar(value="Steps: 0"),
         "visit_count": tk.StringVar(value="Regions visited: 0"),
         "current_reward": tk.StringVar(value="Reward: 0.00"),
@@ -77,6 +79,7 @@ def test_policy_ui(
         "regions": tk.StringVar(value="Regions: 0"),
         "phase": tk.StringVar(value="Phase: Initial"),
         "range": tk.StringVar(value="Visible Range: [-200, 200]"),
+        "sensing_info": tk.StringVar(value="Sensing: No targets in range"),
     }
 
     # Create UI components
@@ -85,30 +88,44 @@ def test_policy_ui(
     canvas = create_canvas(root, canvas_width, canvas_height)
     create_legend(root)
 
+    # Add sensing info label
+    sensing_frame = tk.Frame(
+        root, padx=10, pady=5, bg="#e6f3ff", relief=tk.RAISED, borderwidth=2
+    )
+    sensing_frame.pack(side=tk.TOP, fill=tk.X)
+    tk.Label(
+        sensing_frame, text="Target Sensing:", font=("Arial", 11, "bold"), bg="#e6f3ff"
+    ).pack(side=tk.LEFT, padx=5)
+    tk.Label(
+        sensing_frame,
+        textvariable=variables["sensing_info"],
+        font=("Arial", 11),
+        bg="#e6f3ff",
+        fg="#0066cc",
+    ).pack(side=tk.LEFT, padx=10)
+
     # Create visualizer
     visualizer = EnvironmentVisualizer(canvas, canvas_width, canvas_height)
 
     # Initial grid setup
     visualizer.update_grid()
 
-    # Create agent and target markers
+    # Create agent marker
     agent_x = visualizer.x_to_canvas(env.current_position)
-    target_x = visualizer.x_to_canvas(env.target)
-
     visualizer.agent_marker, visualizer.agent_label = create_agent_marker(
         canvas, agent_x, visualizer.y_position, visualizer.agent_radius
     )
 
-    visualizer.target_marker, visualizer.target_label = create_target_marker(
-        canvas, target_x, visualizer.y_position, visualizer.target_radius
-    )
+    # Create target markers for all targets
+    visualizer.create_target_markers(env.targets, canvas)
 
     # Create path line
     visualizer.path_line = create_path_line(canvas)
 
     # Update initial status display
     variables["current_pos"].set(f"Agent Position: {env.current_position}")
-    variables["target_pos"].set(f"Target Position: {env.target}")
+    targets_info = ", ".join([f"Target {id}: {pos}" for id, pos in env.targets])
+    variables["target_pos"].set(f"Targets: {targets_info}")
     variables["status"].set("Ready to start...")
 
     # Mode-specific setup
