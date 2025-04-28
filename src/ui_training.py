@@ -74,13 +74,16 @@ def train_environment(
         visualizer.current_max_visible = 200
         visualizer.update_grid()
 
-        # Reset target and agent positions in UI
-        target_x = visualizer.x_to_canvas(env.target)
+        # Create new target markers
+        visualizer.create_target_markers(env.targets, visualizer.canvas)
+
+        # Reset agent position in UI
         agent_x = visualizer.x_to_canvas(env.current_position)
 
         # Update position labels
         variables["current_pos"].set(f"Agent Position: {env.current_position}")
-        variables["target_pos"].set(f"Target Position: {env.target}")
+        targets_info = ", ".join([f"Target {id}: {pos}" for id, pos in env.targets])
+        variables["target_pos"].set(f"Targets: {targets_info}")
 
         # Update parameter display
         variables["episode"].set(f"Episode: {episode}/{num_episodes}")
@@ -130,7 +133,7 @@ def train_environment(
 
             # Check if visible range needs updating
             range_changed = visualizer.update_visible_range(
-                env.current_position, env.target
+                env.current_position, env.targets
             )
             if range_changed:
                 # Update grid
@@ -142,9 +145,9 @@ def train_environment(
                 reward + gamma * best_next - Q[state][action]
             )
 
-            # Update the agent and target markers
+            # Update the agent and targets markers
             agent_x = visualizer.update_agent_position(env.current_position)
-            target_x = visualizer.update_target_position(env.target)
+            visualizer.update_targets_positions(env.targets, env.targets_found)
 
             # Update phases based on search phase
             if info.get("search_phase", 0) != visualizer.last_search_phase:
@@ -166,7 +169,8 @@ def train_environment(
 
             # Update info labels
             variables["current_pos"].set(f"Agent Position: {env.current_position}")
-            variables["target_pos"].set(f"Target Position: {env.target}")
+            targets_info = ", ".join([f"Target {id}: {pos}" for id, pos in env.targets])
+            variables["target_pos"].set(f"Targets: {targets_info}")
             variables["range"].set(
                 f"Visible Range: [{visualizer.current_min_visible}, {visualizer.current_max_visible}]"
             )
@@ -196,20 +200,25 @@ def train_environment(
                         best_performance["found"] = True
 
                     # Calculate competitive ratio (efficiency)
-                    competitive_ratio = steps / max(
-                        1, abs(env.target - 0)
-                    )  # From start to target
+                    # Get distance to the farthest target for ratio calculation
+                    farthest_target_dist = 0
+                    for _, pos in env.targets:
+                        farthest_target_dist = max(farthest_target_dist, abs(pos - 0))
+
+                    competitive_ratio = steps / max(1, farthest_target_dist)
                     efficiency_ratios.append(competitive_ratio)
                     if len(efficiency_ratios) > 20:
                         efficiency_ratios.pop(0)
 
                     # Show success
+                    found_targets = sum(env.targets_found)
                     variables["status"].set(
-                        f"Mission complete in {steps} steps! Reward: {episode_reward:.1f}"
+                        f"Mission complete in {steps} steps! Found {found_targets} targets. Reward: {episode_reward:.1f}"
                     )
                 elif env.target_found:
+                    found_targets = sum(env.targets_found)
                     variables["status"].set(
-                        f"Target found but return failed. Steps: {steps}, Reward: {episode_reward:.1f}"
+                        f"Target(s) found ({found_targets}) but return failed. Steps: {steps}, Reward: {episode_reward:.1f}"
                     )
                 else:
                     variables["status"].set(
@@ -228,11 +237,15 @@ def train_environment(
                     )
                     print(f"Regions visited: {len(env.regions_visited)}")
                     if env.rescue_complete:
-                        print(f"MISSION COMPLETE! Return to base successful.")
-                    elif env.target_found:
+                        found_targets = sum(env.targets_found)
                         print(
-                            f"TARGET FOUND at position {env.target} but return failed"
+                            f"MISSION COMPLETE! Return to base successful with {found_targets} targets."
                         )
+                    elif env.target_found:
+                        found_targets = [
+                            i for i, found in enumerate(env.targets_found) if found
+                        ]
+                        print(f"TARGET(S) FOUND {found_targets} but return failed")
                     else:
                         print(f"Maximum steps reached")
 
