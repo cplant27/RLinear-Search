@@ -418,6 +418,10 @@ class InfiniteLinearSearchEnv(gym.Env):
             )
 
         observation = self._get_observation()
+
+        # Get sensing info directly from the sensing method
+        sensing_distance, sensing_direction = self._get_sensing_information()
+
         info = {
             "target_found": self.target_found,
             "rescue_complete": self.rescue_complete,
@@ -429,9 +433,9 @@ class InfiniteLinearSearchEnv(gym.Env):
             "reward_components": reward_components,
             "search_phase": self.search_phase,
             "sensing_info": (
-                observation["sensing_info"][0],
-                observation["sensing_info"][1],
-            ),
+                sensing_distance,
+                sensing_direction,
+            ),  # Updated to use direct sensing info
             "current_rewards": reward_components,  # Add rewards to info for UI display
             "total_reward": reward,  # Add total reward for UI display
         }
@@ -463,18 +467,20 @@ class InfiniteLinearSearchEnv(gym.Env):
                 total_rescued = sum(self.targets_rescued)
 
                 # Big reward for rescuing targets (all at once)
-                rescue_reward = 500.0 * targets_being_rescued
+                if targets_being_rescued == 1:
+                    rescue_reward = 5000.0  # Reward for single target
+                else:
+                    rescue_reward = 10000.0  # Reward for returning both targets
+
                 reward += rescue_reward
                 reward_components["rescue"] = rescue_reward
 
-                # Bonus for completing the full rescue (all targets)
+                # Always terminate when any target is returned
+                self.rescue_complete = True
+                terminated = True
+
                 if all(self.targets_rescued):
-                    all_rescued_bonus = 1000.0
-                    reward += all_rescued_bonus
-                    reward_components["all_rescued_bonus"] = all_rescued_bonus
                     self.all_targets_rescued = True
-                    self.rescue_complete = True
-                    terminated = True
                     print_info(
                         f"Complete rescue! All {self.num_targets} targets rescued!",
                         category="SUCCESS",
@@ -482,9 +488,8 @@ class InfiniteLinearSearchEnv(gym.Env):
                         frequency=1,
                     )
                 else:
-                    # If not all rescued, encourage continuing exploration
                     print_info(
-                        f"Partial rescue: {total_rescued}/{self.num_targets} targets rescued. Continue searching!",
+                        f"Partial rescue: {total_rescued}/{self.num_targets} targets rescued.",
                         category="PROGRESS",
                         step=self.steps_taken,
                         frequency=1,
@@ -507,7 +512,7 @@ class InfiniteLinearSearchEnv(gym.Env):
                 abs(self.current_position - target_pos) <= 2
                 and not self.targets_found[target_id]
             ):
-                target_found_reward = 200.0
+                target_found_reward = 1000.0
                 reward += target_found_reward
                 reward_components["target_found"] = target_found_reward
                 self.targets_found[target_id] = True
@@ -554,25 +559,40 @@ class InfiniteLinearSearchEnv(gym.Env):
             # Case 1: Carrying targets with none left to find - go left to base
             if carrying_targets > 0 and unfound_targets == 0:
                 if action == 0:  # Moving left
-                    return_reward = 1.0
+                    return_reward = (
+                        2.0  # Higher reward for going left when all targets found
+                    )
                     reward += return_reward
                     reward_components["return_to_base"] = return_reward
+                # No reward for going right when carrying all targets
 
-            # Case 2: Following sensed targets
+            # Case 2: Carrying at least one target with more targets to find
+            elif carrying_targets > 0:
+                # Equal reward for going left (toward base) or right (exploring for other targets)
+                if action == 0:  # Moving left
+                    return_reward = 1.0
+                    reward += return_reward
+                    reward_components["partial_return_to_base"] = return_reward
+                elif action == 1:  # Moving right
+                    explore_reward = 1.0
+                    reward += explore_reward
+                    reward_components["continue_exploring"] = explore_reward
+
+            # Case 3: Following sensed targets
             elif sensed_target:
                 # Moving in direction of sensed target
                 if (sensing_direction == -1 and action == 0) or (
                     sensing_direction == 1 and action == 1
                 ):
-                    sensing_reward = 1.0
+                    sensing_reward = 3.0
                     reward += sensing_reward
                     reward_components["follow_sensing"] = sensing_reward
 
-            # Case 3: Default exploration behavior - go right
+            # Case 4: Default exploration behavior - go right
             else:
-                # Reward exploring right strongly when targets still need to be found
+                # Reward exploring right when targets still need to be found
                 if unfound_targets > 0 and action == 1:
-                    explore_reward = 1.0
+                    explore_reward = 1.0  # Set to 1.0 as requested
                     reward += explore_reward
                     reward_components["explore_right"] = explore_reward
 
@@ -582,8 +602,8 @@ class InfiniteLinearSearchEnv(gym.Env):
                         reward += momentum_reward
                         reward_components["exploration_momentum"] = momentum_reward
 
-            # Small living penalty to encourage efficiency (reduced)
-            living_penalty = -0.5  # Reduced from -0.1 to -0.05
+            # Small living penalty to encourage efficiency
+            living_penalty = -0.1  # Changed to -0.1 as requested
             reward += living_penalty
             reward_components["living_penalty"] = living_penalty
 

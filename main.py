@@ -10,18 +10,18 @@ def main(load_weights=None):
 
     # Learning parameters
     alpha = 0.6  # Learning rate
-    gamma = 0.99  # Discount factor
+    gamma = 0.999  # Discount factor - increased to make agent more forward-thinking
     epsilon = 0.2  # Exploration rate (reduced from 0.8)
-    num_episodes = 1000  # Number of training episodes
+    num_episodes = 100  # Number of training episodes
 
     print("Initializing search and rescue environment...")
     # Initialize the environment with infinite line and moving targets
     env = InfiniteLinearSearchEnv(
         max_steps=5000,  # Maximum steps per episode
         target_range=1000,  # Range for initial target placement (doubled from 500 to 1000)
-        region_size=50,
+        region_size=100,
         move_target=True,
-        target_move_prob=0.02,  # Target moves with 2% probability each step
+        target_move_prob=0.05,  # Target moves with 5% probability each step (upped from 2% )
         target_speed=1,  # Max 1 unit per move
         num_targets=2,  # Use 2 targets
         sensing_range=50,  # Agent can sense targets within 50 units

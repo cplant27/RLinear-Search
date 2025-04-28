@@ -29,7 +29,7 @@ def test_policy_ui(
     mode: str = "test",
     num_episodes: int = 1,
     alpha: float = 0.6,
-    gamma: float = 0.99,
+    gamma: float = 0.999,  # Increased from 0.99 to make agent more forward-thinking
     epsilon: float = 0.8,
 ) -> None:
     """

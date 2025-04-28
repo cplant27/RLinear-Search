@@ -19,7 +19,7 @@ def train_environment(
     actions: List[int],
     num_episodes: int = 1000,
     alpha: float = 0.6,
-    gamma: float = 0.99,
+    gamma: float = 0.999,
     epsilon: float = 0.8,
 ):
     """Run training with visualization for the specified number of episodes."""

@@ -23,7 +23,16 @@ The agent starts at the base (position 0) and must explore the line to find one 
     cd <your-repo-directory>
     ```
 2.  **Install dependencies:**
-    The primary dependencies are Gymnasium and NumPy.
+    It's recommended to use a virtual environment.
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+    Install the required packages using the provided `requirements.txt` file:
+    ```bash
+    pip install -r requirements.txt
+    ```
+    If `requirements.txt` is not available, you can install the primary dependencies directly:
     ```bash
     pip install gymnasium numpy
     ```

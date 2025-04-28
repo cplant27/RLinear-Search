@@ -372,23 +372,28 @@ class EnvironmentVisualizer:
         x = self.x_to_canvas(position)
         dist, direction = sensing_info
 
-        # Remove existing indicator
+        # Remove existing indicators (both arc and line)
         if self.sensing_indicator:
             self.canvas.delete(self.sensing_indicator)
             self.sensing_indicator = None
 
+        # Clean up any previous direction markers that might be related to sensing
+        for marker in self.direction_markers:
+            if self.canvas.gettags(marker) and "sensing" in self.canvas.gettags(marker):
+                self.canvas.delete(marker)
+                self.direction_markers.remove(marker)
+
         # Only show indicator if target is detected
         if dist > 0:
             # Create a directional indicator
-            radius = 40  # Size of sensing indicator
+            radius = 50  # Increased size of sensing indicator
             angle = 0 if direction > 0 else 180  # Direction angle (right or left)
 
-            # Create a partial circle segment to show direction
-            # Use a light blue semi-transparent indicator
+            # Create a more visible arc
             start_angle = angle - 45
             end_angle = angle + 45
 
-            # Create a circle segment
+            # Create a circle segment with more visibility
             self.sensing_indicator = self.canvas.create_arc(
                 x - radius,
                 self.y_position - radius,
@@ -396,33 +401,39 @@ class EnvironmentVisualizer:
                 self.y_position + radius,
                 start=start_angle,
                 extent=90,
-                outline="blue",
-                fill="lightblue",
-                width=2,
-                style="arc",
+                outline="#0066cc",  # Darker blue
+                fill="#99ccff",  # Lighter blue fill
+                width=3,  # Thicker outline
                 tags="sensing",
             )
 
             # Add a line to indicate direction more clearly
-            line_len = 30
+            line_len = 40  # Longer line
             dx = line_len * direction  # Direction multiplier
             line = self.canvas.create_line(
                 x,
                 self.y_position,
                 x + dx,
                 self.y_position,
-                fill="blue",
-                width=2,
+                fill="#0066cc",  # Match arc color
+                width=3,  # Thicker line
                 arrow=tk.LAST,
                 tags="sensing",
             )
 
-            # Group both elements
-            if not self.sensing_indicator:
-                self.sensing_indicator = line
-            else:
-                # Remember both elements to delete later
-                self.direction_markers.append(line)
+            # Add to direction markers for proper cleanup
+            self.direction_markers.append(line)
+
+            # Add distance text
+            dist_text = self.canvas.create_text(
+                x,
+                self.y_position + radius + 15,
+                text=f"Distance: {dist:.1f}",
+                fill="#0066cc",
+                font=("Arial", 9, "bold"),
+                tags="sensing",
+            )
+            self.direction_markers.append(dist_text)
 
     def highlight_success(self, found=True):
         """Highlight the agent when a target is found."""
