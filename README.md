@@ -1,19 +1,48 @@
-# Infinite Linear Search and Rescue Environment (Single Target)
+# Q-Learning for Search and Rescue on an Infinite Line
 
-This project implements a custom reinforcement learning environment using the Gymnasium library. The environment, `InfiniteLinearSearchEnv`, simulates a search and rescue task for a single target on a semi-infinite line starting at position 0 and extending infinitely in the positive direction.
+This project implements a reinforcement learning agent using Q-learning to solve a search and rescue task on a semi-infinite line (`[0, +infinity)`). The agent learns to find a potentially moving target and return it to the base (position 0). The simulation includes a Tkinter-based UI for visualizing the agent's behavior during training and testing.
 
-## Environment Description
+The core logic is built using the Gymnasium library for the environment definition and standard Python libraries for the Q-learning algorithm and UI.
 
-The agent starts at a position near the base (default: between 80-120) and must explore the line to find a single target located at an unknown position. Once the target is found (by moving within close proximity), the agent needs to return to the base (position 0) with the target to complete the rescue. The target can be configured to be stationary or mobile, following a predefined zigzag pattern.
+## Project Structure
+
+```
+.
+├── main.py                 # Main script to run training or testing with visualization
+├── requirements.txt        # Project dependencies
+├── README.md               # This file
+├── .gitignore
+├── gymnasium_tutorial.py   # Separate Blackjack Q-learning example (not part of main project)
+├── saved_weights/          # Directory to save/load trained Q-tables (e.g., q_table_latest.pkl)
+└── src/
+    ├── environment.py        # Defines the InfiniteLinearSearchEnv Gymnasium environment
+    ├── qlearning.py        # Implements the Q-learning agent (Q-table initialization, action selection, training loop)
+    ├── ui_main.py          # Main logic for the Tkinter UI, orchestrates training/testing visualization
+    ├── ui_visualization.py # Handles drawing the environment state on the canvas
+    ├── ui_components.py    # Defines reusable Tkinter UI elements (frames, labels, canvas markers)
+    ├── ui_utils.py         # Utility functions (e.g., saving/loading Q-tables)
+    └── __pycache__/        # Python cache files
+```
+
+## Environment Description (`src/environment.py`)
+
+The `InfiniteLinearSearchEnv` simulates:
+
+- An agent starting at the base (position 0).
+- A semi-infinite line `[0, +infinity)`.
+- A single target at an unknown initial position within `target_range`.
+- Optional target movement (zigzag pattern with configurable probability and speed).
+- A goal to find the target and return to the base (position 0).
 
 ## Key Features
 
-- **Semi-Infinite Space**: The environment exists on a line `[0, +infinity)`.
-- **Single Target Search and Rescue**: The agent needs to find one target and return it to the base at position 0.
-- **Moving Target**: Optional target movement with configurable probability and speed, following a zigzag pattern.
-- **Search Phases**: The agent follows a structured search pattern: initial exploration right, return to base, then full exploration right.
-- **Configurable Parameters**: Environment settings like target range, movement parameters, and max steps can be customized.
-- **Gymnasium Interface**: Follows the standard Gymnasium API for easy integration with RL algorithms.
+- **Semi-Infinite Space**: Exploration along the positive number line.
+- **Search and Rescue Task**: Find the target, then return to base.
+- **Moving Target Option**: Target can be stationary or move dynamically.
+- **Structured Search Phases**: Agent learns distinct phases: initial exploration, return to base, full exploration, and rescue.
+- **Q-Learning Agent (`src/qlearning.py`)**: Learns a policy using a Q-table. Handles potentially infinite state space using state quantization and a default dictionary. Includes epsilon-greedy action selection with adaptive bias and experience replay.
+- **Tkinter Visualization (`src/ui_*.py`)**: Provides a real-time visual representation of the agent, target, path, and key metrics during training and testing.
+- **Configurable Parameters**: Environment dynamics (target movement, max steps) and learning parameters (alpha, gamma, epsilon) can be adjusted.
 
 ## Installation
 
@@ -22,126 +51,117 @@ The agent starts at a position near the base (default: between 80-120) and must 
     git clone <your-repo-url>
     cd <your-repo-directory>
     ```
-2.  **Install dependencies:**
-    The primary dependencies are Gymnasium and NumPy.
+2.  **Create a virtual environment (recommended):**
     ```bash
-    pip install gymnasium numpy
+    python -m venv venv
+    # On Windows
+    .\venv\Scripts\activate
+    # On macOS/Linux
+    source venv/bin/activate
+    ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    _Note: `requirements.txt` includes `gymnasium`, `numpy`, and `matplotlib`._
+
+## How to Run
+
+The primary way to run the simulation is via `main.py`.
+
+1.  **Train a new agent:**
+
+    ```bash
+    python main.py
     ```
 
-## How to Use
+    This will initialize a new Q-table and start the training process, showing the visualization. The trained Q-table will be saved to `saved_weights/q_table_latest.pkl`.
 
-Here's a basic example of how to create and interact with the environment:
+2.  **Test a pre-trained agent:**
+    Ensure a saved Q-table exists (e.g., `saved_weights/q_table_latest.pkl`).
+    ```bash
+    python main.py --load saved_weights/q_table_latest.pkl
+    # or shorthand
+    python main.py -l saved_weights/q_table_latest.pkl
+    ```
+    This will load the specified Q-table and run multiple test episodes (default: 100) with visualization, reporting the average competitive ratio at the end.
 
-```python
-import gymnasium as gym
-from src.environment import InfiniteLinearSearchEnv  # Assuming your environment file is here
+## Environment Details (`src/environment.py`)
 
-# Create the environment instance
-env = InfiniteLinearSearchEnv(
-    max_steps=5000,
-    target_range=500,
-    move_target=True,
-    target_move_prob=0.05,
-)
+### Initialization Parameters
 
-# Reset the environment
-observation, info = env.reset()
-
-terminated = False
-truncated = False
-total_reward = 0
-step_count = 0
-
-while not terminated and not truncated:
-    # Choose an action (0: left, 1: right) - e.g., random action
-    action = env.action_space.sample()
-
-    # Take a step
-    observation, reward, terminated, truncated, info = env.step(action)
-
-    total_reward += reward
-    step_count += 1
-
-    # Optional: Render the environment state
-    # env.render()
-
-    if terminated:
-        print(f"Episode finished - Terminated: Target rescued!")
-    if truncated:
-        print(f"Episode finished - Truncated: Max steps reached.")
-
-print(f"Total steps: {step_count}")
-print(f"Total reward: {total_reward}")
-print(f"Final Info: {info}")
-
-env.close()
-```
-
-## Environment Parameters
-
-The `InfiniteLinearSearchEnv` class accepts the following parameters during initialization:
-
-- `max_steps` (int): Maximum number of steps per episode.
-- `target_range` (int): Maximum initial placement position for the target.
+- `max_steps` (int): Maximum steps per episode.
+- `target_range` (int): Max initial placement position for the target.
 - `region_size` (int): Size of regions for tracking visitation (used internally).
-- `move_target` (bool): Whether the target moves during the episode.
-- `target_move_prob` (float): Probability of the target moving in a given step.
-- `target_speed` (int): Maximum distance the target can move in one step (used within the zigzag pattern).
-- `seed` (Optional[int]): Seed for the random number generator.
+- `move_target` (bool): Whether the target moves.
+- `target_move_prob` (float): Probability of target moving per step.
+- `target_speed` (int): Max distance target moves in one step.
+- `seed` (Optional[int]): Random seed.
 
-## Observation Space
+### Observation Space
 
-The observation is a dictionary containing:
+The observation is a Gymnasium dictionary space containing:
 
-- `relative_position`: Agent's position relative to the target (during search) or the base (during rescue).
-- `direction`: Agent's current facing direction (0: left, 1: right).
-- `farthest_right_rel`: Farthest position reached relative to the current position.
-- `target_found`: Binary flag indicating if the target has been found.
-- `distance_to_base`: Absolute distance from the agent to the base (position 0).
-- `search_phase`: Current phase of the search (0: initial, 1: return, 2: explore).
+- `direction` (Discrete(2)): Agent's facing direction (0: left, 1: right).
+- `farthest_right_rel` (Box): Farthest position reached relative to the agent's current position. _Note: Quantized in `qlearning.py` for the Q-table state._
+- `target_found` (Discrete(2)): Binary flag (0: no, 1: yes).
+- `distance_to_base` (Box): Absolute distance from the agent to the base (position 0). _Note: Quantized in `qlearning.py` for the Q-table state._
+- `search_phase` (Discrete(3)): Current phase (0: initial, 1: return, 2: explore).
 
-## Action Space
+### Action Space
 
-The action space is discrete with two possible actions:
+The action space is discrete with three possible actions:
 
 - `0`: Move left.
 - `1`: Move right.
+- `2`: Signal return to base (intended to trigger phase transition logic, although primary transitions are state-based).
 
-The agent cannot move to a position less than 0.
+_Note: The agent cannot move to a position less than 0._
 
-## Reward Structure
+### Reward Structure
 
-The reward system guides the agent through search and rescue phases:
+The reward system encourages efficient search and rescue:
 
-- **Base Penalty:** A small negative reward (`-0.1`) is given each step to encourage efficiency.
-- **Search Phase Rewards:**
-  - **Initial Exploration (Phase 0):** Reward for moving right (`+0.3`). Phase ends when agent reaches `initial_exploration_threshold`.
-  - **Return to Base (Phase 1):** Reward for moving left towards base (`+0.4`). Phase ends when agent reaches base (position 0).
-  - **Full Exploration (Phase 2):** Reward for moving right (`+0.3`) and reaching new farthest right positions (`+0.4`).
-  - **Target Found:** A large reward (`+50.0`) is given when the agent is within 1 step of the target. This transitions the agent to the Rescue Phase.
-  - **Region Bonus:** Small reward (`+0.2`) for visiting new regions frequently (all search phases).
-- **Rescue Phase Rewards (Target Found):**
-  - **Rescue Complete:** A very large reward (`+100.0`) is given when the agent returns to the base (position 0) with the target. This terminates the episode.
-  - **Base Progress:** Reward for moving left towards the base (`+0.5 * (1 / max(1, current_position / 10))`).
-  - **Away Penalty:** Penalty for moving right (away from base) (`-0.3`).
-  - **Proximity Bonus:** Small reward for reducing distance to base (`+0.2 * step_size / previous_distance`).
+- Small penalty per step (`-0.1`).
+- Rewards for progressing through search phases (moving right initially, moving left to return, exploring new territory).
+- Bonus for visiting new regions.
+- Large reward for finding the target (`+50.0`).
+- Rewards for returning to base during the rescue phase (moving left, reducing distance).
+- Large reward for completing the rescue (`+100.0`).
+- Penalties for counter-productive actions (e.g., moving away from base during rescue).
+
+_See `src/environment.py`'s `step` method for the detailed reward calculation._
+
+### State Representation for Q-Learning (`src/qlearning.py`)
+
+Since the position and distance can be continuous/large, the raw observation is converted into a discrete state tuple for the Q-table key using `observation_to_state`:
+
+```python
+(
+    direction,
+    quantized_farthest_right_rel, # Farthest right relative pos quantized
+    target_found,
+    quantized_base_distance,    # Distance to base quantized
+    search_phase,
+)
+```
+
+Quantization helps manage the size of the state space.
+
+## Visualization UI
+
+The Tkinter UI (`src/ui_main.py`, `src/ui_visualization.py`, `src/ui_components.py`) provides:
+
+- A visual representation of the 1D line.
+- Markers for the agent (red circle) and target (green circle).
+- A line showing the agent's path.
+- Indicators for search phase transitions.
+- Dynamic scaling and panning of the view based on agent/target position.
+- Real-time display of metrics (steps, position, reward, episode, etc.).
+- Summary statistics after testing multiple rounds (average competitive ratio).
 
 ## Configuration
 
-The verbosity of the environment's console output can be configured by modifying the constants at the top of `src/environment.py`:
-
-- `PRINT_FREQUENCY`: Controls how often informational messages are printed.
-- `PRINT_EXPLORATION`: Toggles exploration-related messages.
-- `PRINT_REWARDS`: Toggles detailed reward breakdown messages.
-- `PRINT_DECISIONS`: Toggles decision-logic related messages (currently unused in default configuration).
-
-## Dependencies
-
-The project uses the following key dependencies:
-
-- **gymnasium**: For reinforcement learning environment
-- **numpy**: For numeric operations
-- **matplotlib**: For visualization
-- **tkinter**: For UI components (built-in library)
-
-Note: The `pygame` library listed in requirements.txt appears to be unused in the current implementation, as the visualization system is built using tkinter and matplotlib.
+- **Environment Verbosity:** Modify `PRINT_*` constants at the top of `src/environment.py` to control console output detail.
+- **Learning Parameters:** Adjust `alpha`, `gamma`, `epsilon`, `num_episodes` in `main.py`.
+- **UI Delay:** Modify the `delay` parameter passed to `test_policy_ui` in `main.py` to speed up or slow down the visualization.
