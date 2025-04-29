@@ -38,7 +38,7 @@ from src.environment import InfiniteLinearSearchEnv  # Assuming your environment
 
 # Create the environment instance
 env = InfiniteLinearSearchEnv(
-    max_steps=2000,
+    max_steps=5000,
     target_range=500,
     move_target=True,
     target_move_prob=0.05,
@@ -134,3 +134,14 @@ The verbosity of the environment's console output can be configured by modifying
 - `PRINT_EXPLORATION`: Toggles exploration-related messages.
 - `PRINT_REWARDS`: Toggles detailed reward breakdown messages.
 - `PRINT_DECISIONS`: Toggles decision-logic related messages (currently unused in default configuration).
+
+## Dependencies
+
+The project uses the following key dependencies:
+
+- **gymnasium**: For reinforcement learning environment
+- **numpy**: For numeric operations
+- **matplotlib**: For visualization
+- **tkinter**: For UI components (built-in library)
+
+Note: The `pygame` library listed in requirements.txt appears to be unused in the current implementation, as the visualization system is built using tkinter and matplotlib.

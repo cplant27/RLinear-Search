@@ -71,8 +71,8 @@ def train_environment(
         visualizer.reset_path()
 
         # Reset visible range for new episode
-        visualizer.current_min_visible = -200
-        visualizer.current_max_visible = 200
+        visualizer.current_min_visible = -100
+        visualizer.current_max_visible = 600
         visualizer.update_grid()
 
         # Reset target and agent positions in UI

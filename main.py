@@ -18,11 +18,11 @@ def main(load_weights=None):
     # Initialize the environment with infinite line and moving target
     env = InfiniteLinearSearchEnv(
         max_steps=5000,  # Maximum steps per episode
-        target_range=500,  # Range for initial target placement (reduced from 1000)
-        region_size=50,
+        target_range=500,  # Range for initial target placement
+        region_size=25,
         move_target=True,
-        target_move_prob=0.02,  # Target moves with 2% probability each step (reduced from 5%)
-        target_speed=1,  # Max 1 unit per move (reduced from 3)
+        target_move_prob=0.05,  # Target moves with 5% probability each step
+        target_speed=1,  # Max 1 unit per move
     )
 
     # Either load Q-table from file or train from scratch
@@ -47,7 +47,7 @@ def main(load_weights=None):
             alpha=alpha,
             gamma=gamma,
             epsilon=epsilon,
-            delay=0,  # Set delay to 0 for fastest training visualization
+            delay=0,  # Set delay to 0ms for fastest training visualization
         )
 
     print("Training complete. Resetting environment for testing...")
@@ -62,14 +62,14 @@ def main(load_weights=None):
         env,
         Q,
         actions,
-        mode="test",  # Keep it in test mode
+        mode="test",
         num_episodes=num_episodes,
         alpha=alpha,
         gamma=gamma,
         epsilon=epsilon,
-        delay=1,  # Keep the faster visualization in testing (updated delay)
-        num_test_rounds=100,  # Run 100 test rounds (updated rounds)
-    )  # Set delay to 5ms for faster visualization
+        delay=1,  # Set delay to 0ms for fastest testing visualization
+        num_test_rounds=100,  # Run 100 test rounds
+    )
 
     print("Visualization complete.")
 

@@ -350,6 +350,34 @@ class InfiniteLinearSearchEnv(gym.Env):
             truncated (bool): Whether the episode is truncated
             info (dict): Additional information about the step
         """
+        # Reward constants
+        # Major Milestone Rewards
+        TARGET_FOUND_REWARD = 500.0
+        RESCUE_COMPLETE_REWARD = 1000.0
+        # Phase Transition Rewards
+        PHASE_TRANSITION_REWARD_OPTIMAL = 1.0
+        PHASE_TRANSITION_REWARD_SUBOPTIMAL = 0.5
+        # Exploration Rewards
+        START_EXPLORE_REWARD = 0.5
+        EXPLORE_PROGRESS_REWARD = 0.5
+        NEW_REGIONS_REWARD = 0.2
+        # Navigation Rewards
+        GO_RIGHT_REWARD = 0.3
+        RETURN_TO_BASE_REWARD = 0.4
+        BASE_PROGRESS_REWARD = 0.5
+        # Movement Penalties
+        STEP_PENALTY = -0.1
+        WRONG_DIRECTION_PENALTY_INITIAL = -0.3
+        WRONG_DIRECTION_PENALTY_RETURN = -0.4
+        BACK_PENALTY = -0.3
+        OSCILLATION_PENALTY = -5.0
+        # Signal Penalties
+        REDUNDANT_SIGNAL_PENALTY = -0.2
+        EXPLORE_SIGNAL_PENALTY = -0.3
+        # Base-related Penalties
+        AWAY_FROM_BASE_PENALTY_BASE = -1.0
+        AWAY_FROM_BASE_PENALTY_MULTIPLIER = -0.05
+
         self.steps_taken += 1
         self.previous_action = action
 
@@ -374,10 +402,10 @@ class InfiniteLinearSearchEnv(gym.Env):
 
                 # Higher reward for optimal distance range (around 150-250)
                 if 150 <= exploration_distance <= 250:
-                    phase_transition_reward = 1.0  # Optimal range gets higher reward
+                    phase_transition_reward = PHASE_TRANSITION_REWARD_OPTIMAL  # Optimal range gets higher reward
                 else:
                     # Gradually less reward for going too little or too far
-                    phase_transition_reward = 0.5
+                    phase_transition_reward = PHASE_TRANSITION_REWARD_SUBOPTIMAL
 
                 # Change phase to return to base
                 self.search_phase = self.SEARCH_PHASE_RETURN
@@ -396,21 +424,19 @@ class InfiniteLinearSearchEnv(gym.Env):
                 )
             elif self.search_phase == self.SEARCH_PHASE_RETURN:
                 # If already in return phase, small penalty for redundant signaling
-                redundant_signal_penalty = -0.2
-                reward += redundant_signal_penalty
-                reward_components["redundant_signal"] = redundant_signal_penalty
+                reward += REDUNDANT_SIGNAL_PENALTY
+                reward_components["redundant_signal"] = REDUNDANT_SIGNAL_PENALTY
                 self.episode_rewards["redundant_signal"] = (
                     self.episode_rewards.get("redundant_signal", 0)
-                    + redundant_signal_penalty
+                    + REDUNDANT_SIGNAL_PENALTY
                 )
             elif self.search_phase == self.SEARCH_PHASE_EXPLORE:
                 # If in explore phase, penalty for signaling (should be exploring at this point)
-                explore_signal_penalty = -0.3
-                reward += explore_signal_penalty
-                reward_components["explore_signal_penalty"] = explore_signal_penalty
+                reward += EXPLORE_SIGNAL_PENALTY
+                reward_components["explore_signal_penalty"] = EXPLORE_SIGNAL_PENALTY
                 self.episode_rewards["explore_signal_penalty"] = (
                     self.episode_rewards.get("explore_signal_penalty", 0)
-                    + explore_signal_penalty
+                    + EXPLORE_SIGNAL_PENALTY
                 )
 
             # Instead of not moving, allow a slight left movement to encourage return to base
@@ -419,22 +445,17 @@ class InfiniteLinearSearchEnv(gym.Env):
             self.current_direction = 0  # Left direction
             action = 0  # Treat as left action for reward calculations
 
-        # Update position based on action (only 0 and 1 affect movement)
+        # Update position and direction based on action (only 0 and 1 affect movement)
         if action == 0:
             self.current_position -= 1
+            self.current_direction = 0
         elif action == 1:
             self.current_position += 1
+            self.current_direction = 1
         # Action 2 (signal) already handled above
 
         # Keep agent within left boundary (can go infinitely to the right)
         self.current_position = max(0, self.current_position)
-
-        # Update direction based on action
-        if action == 0:
-            self.current_direction = 0
-        elif action == 1:
-            self.current_direction = 1
-        # Action 2 (signal) direction already set above
 
         # Update tracking variables
         self.previous_positions.append(self.current_position)
@@ -447,10 +468,9 @@ class InfiniteLinearSearchEnv(gym.Env):
         # ===== REWARD SYSTEM =====
 
         # Base step penalty to encourage efficiency
-        step_penalty = -0.1
-        reward += step_penalty
-        reward_components["step_penalty"] = step_penalty
-        self.episode_rewards["step_penalty"] += step_penalty
+        reward += STEP_PENALTY
+        reward_components["step_penalty"] = STEP_PENALTY
+        self.episode_rewards["step_penalty"] += STEP_PENALTY
 
         # Check mission phase and progress
         if not self.target_found:
@@ -468,7 +488,7 @@ class InfiniteLinearSearchEnv(gym.Env):
             #         step=self.steps_taken,
             #     )
 
-            # Keep the automatic transition from return to full exploration
+            # Transition
             if (
                 self.search_phase == self.SEARCH_PHASE_RETURN
                 and self.current_position == 0
@@ -483,10 +503,9 @@ class InfiniteLinearSearchEnv(gym.Env):
             # Check if target is found
             if abs(self.current_position - self.target) <= 1:
                 # Major reward for finding the target
-                target_found_reward = 500.0
-                reward += target_found_reward
-                reward_components["target_found"] = target_found_reward
-                self.episode_rewards["target_found"] += target_found_reward
+                reward += TARGET_FOUND_REWARD
+                reward_components["target_found"] = TARGET_FOUND_REWARD
+                self.episode_rewards["target_found"] += TARGET_FOUND_REWARD
                 self.target_found = True
                 print_info(
                     f"Target found at position {self.target}! Agent at position {self.current_position}",
@@ -501,150 +520,109 @@ class InfiniteLinearSearchEnv(gym.Env):
                 if self.search_phase == self.SEARCH_PHASE_INITIAL:
                     # During initial exploration, reward going right
                     if action == 1:
-                        right_reward = 0.3
-                        reward += right_reward
-                        reward_components["go_right"] = right_reward
-                        self.episode_rewards["go_right"] += right_reward
+                        reward += GO_RIGHT_REWARD
+                        reward_components["go_right"] = GO_RIGHT_REWARD
+                        self.episode_rewards["go_right"] += GO_RIGHT_REWARD
                     # Penalize moving left during initial exploration phase
                     elif action == 0 and self.current_position > 0:
-                        wrong_direction_penalty = -0.3
-                        reward += wrong_direction_penalty
-                        reward_components["wrong_direction"] = wrong_direction_penalty
+                        reward += WRONG_DIRECTION_PENALTY_INITIAL
+                        reward_components["wrong_direction"] = (
+                            WRONG_DIRECTION_PENALTY_INITIAL
+                        )
                         if "wrong_direction" not in self.episode_rewards:
                             self.episode_rewards["wrong_direction"] = 0
                         self.episode_rewards[
                             "wrong_direction"
-                        ] += wrong_direction_penalty
+                        ] += WRONG_DIRECTION_PENALTY_INITIAL
 
                 elif self.search_phase == self.SEARCH_PHASE_RETURN:
                     # During return phase, reward going left toward base
                     if action == 0:
-                        return_reward = 0.4
-                        reward += return_reward
-                        reward_components["return_to_base"] = return_reward
-                        self.episode_rewards["return_to_base"] += return_reward
+                        reward += RETURN_TO_BASE_REWARD
+                        reward_components["return_to_base"] = RETURN_TO_BASE_REWARD
+                        self.episode_rewards["return_to_base"] += RETURN_TO_BASE_REWARD
                     # Special case: when at base (position 0), encourage moving right to start full exploration
                     elif action == 1 and self.current_position == 0:
-                        start_explore_reward = 0.5
-                        reward += start_explore_reward
-                        reward_components["start_explore"] = start_explore_reward
-                        self.episode_rewards["start_explore"] += start_explore_reward
+                        reward += START_EXPLORE_REWARD
+                        reward_components["start_explore"] = START_EXPLORE_REWARD
+                        self.episode_rewards["start_explore"] += START_EXPLORE_REWARD
                     # Penalize moving right when supposed to be returning to base
                     elif action == 1 and self.current_position > 0:
-                        wrong_direction_penalty = -0.4
-                        reward += wrong_direction_penalty
-                        reward_components["wrong_direction"] = wrong_direction_penalty
+                        reward += WRONG_DIRECTION_PENALTY_RETURN
+                        reward_components["wrong_direction"] = (
+                            WRONG_DIRECTION_PENALTY_RETURN
+                        )
                         if "wrong_direction" not in self.episode_rewards:
                             self.episode_rewards["wrong_direction"] = 0
                         self.episode_rewards[
                             "wrong_direction"
-                        ] += wrong_direction_penalty
-
-                    # Add oscillation penalty during return phase as well
-                    if len(self.previous_positions) >= 5:
-                        # Check for oscillation pattern in last 5 positions
-                        last_positions = self.previous_positions[-5:]
-
-                        # Look for alternating pattern like A-B-A-B-A
-                        oscillation_detected = (
-                            last_positions[0] == last_positions[2] == last_positions[4]
-                            and last_positions[1] == last_positions[3]
-                            and last_positions[0] != last_positions[1]
-                        )
-
-                        # Or pattern like A-B-A-B where last 4 positions show alternating
-                        if (
-                            not oscillation_detected
-                            and len(self.previous_positions) >= 4
-                        ):
-                            last_four = self.previous_positions[-4:]
-                            oscillation_detected = (
-                                last_four[0] == last_four[2]
-                                and last_four[1] == last_four[3]
-                                and last_four[0] != last_four[1]
-                            )
-
-                        if oscillation_detected:
-                            # Apply a strong oscillation penalty to break the loop
-                            oscillation_penalty = -5.0  # Increased penalty
-                            reward += oscillation_penalty
-                            reward_components["oscillation"] = oscillation_penalty
-                            if "oscillation" not in self.episode_rewards:
-                                self.episode_rewards["oscillation"] = 0
-                            self.episode_rewards["oscillation"] += oscillation_penalty
+                        ] += WRONG_DIRECTION_PENALTY_RETURN
 
                 elif self.search_phase == self.SEARCH_PHASE_EXPLORE:
                     # EXPLORATION PHASE REWARDS - Simple reward for moving right
 
-                    # 1. Reward for moving right, regardless of whether it's new territory
+                    # Reward for moving right, regardless of whether it's new territory
                     if action == 1 and self.current_position > previous_position:
                         # Simple fixed reward for exploring right
-                        explore_progress = 0.5
-                        reward += explore_progress
-                        reward_components["explore_progress"] = explore_progress
+                        reward += EXPLORE_PROGRESS_REWARD
+                        reward_components["explore_progress"] = EXPLORE_PROGRESS_REWARD
                         self.episode_rewards["explore_progress"] = (
                             self.episode_rewards.get("explore_progress", 0)
-                            + explore_progress
+                            + EXPLORE_PROGRESS_REWARD
                         )
 
-                    # 2. Penalty for moving toward base (left)
+                    # Penalty for moving toward base (left)
                     if action == 0 and self.current_position < previous_position:
-                        back_penalty = -0.3
-                        reward += back_penalty
-                        reward_components["back_penalty"] = back_penalty
+                        reward += BACK_PENALTY
+                        reward_components["back_penalty"] = BACK_PENALTY
                         self.episode_rewards["back_penalty"] = (
-                            self.episode_rewards.get("back_penalty", 0) + back_penalty
+                            self.episode_rewards.get("back_penalty", 0) + BACK_PENALTY
                         )
 
-                    # 3. Add oscillation penalty during exploration phase to prevent getting stuck
-                    if len(self.previous_positions) >= 5:
-                        # Check for oscillation pattern in last 5 positions
-                        last_positions = self.previous_positions[-5:]
+                # Add oscillation penalty to prevent getting stuck
+                if len(self.previous_positions) >= 5:
+                    # Check for oscillation pattern in last 5 positions
+                    last_positions = self.previous_positions[-5:]
 
-                        # Look for alternating pattern like A-B-A-B-A
+                    # Look for alternating pattern like A-B-A-B-A
+                    oscillation_detected = (
+                        last_positions[0] == last_positions[2] == last_positions[4]
+                        and last_positions[1] == last_positions[3]
+                        and last_positions[0] != last_positions[1]
+                    )
+
+                    # Or pattern like A-B-A-B where last 4 positions show alternating
+                    if not oscillation_detected and len(self.previous_positions) >= 4:
+                        last_four = self.previous_positions[-4:]
                         oscillation_detected = (
-                            last_positions[0] == last_positions[2] == last_positions[4]
-                            and last_positions[1] == last_positions[3]
-                            and last_positions[0] != last_positions[1]
+                            last_four[0] == last_four[2]
+                            and last_four[1] == last_four[3]
+                            and last_four[0] != last_four[1]
                         )
 
-                        # Or pattern like A-B-A-B where last 4 positions show alternating
-                        if (
-                            not oscillation_detected
-                            and len(self.previous_positions) >= 4
-                        ):
-                            last_four = self.previous_positions[-4:]
-                            oscillation_detected = (
-                                last_four[0] == last_four[2]
-                                and last_four[1] == last_four[3]
-                                and last_four[0] != last_four[1]
-                            )
+                    if oscillation_detected:
+                        # Apply a strong oscillation penalty to break the loop
+                        reward += OSCILLATION_PENALTY
+                        reward_components["oscillation"] = OSCILLATION_PENALTY
+                        if "oscillation" not in self.episode_rewards:
+                            self.episode_rewards["oscillation"] = 0
+                        self.episode_rewards["oscillation"] += OSCILLATION_PENALTY
 
-                        if oscillation_detected:
-                            # Apply a strong oscillation penalty to break the loop
-                            oscillation_penalty = -5.0  # Increased penalty
-                            reward += oscillation_penalty
-                            reward_components["oscillation"] = oscillation_penalty
-                            if "oscillation" not in self.episode_rewards:
-                                self.episode_rewards["oscillation"] = 0
-                            self.episode_rewards["oscillation"] += oscillation_penalty
+                # Reward for visiting new regions (all phases)
+                if len(self.regions_visited) > self.steps_taken / 30:
+                    reward += NEW_REGIONS_REWARD
+                    reward_components["new_regions"] = NEW_REGIONS_REWARD
+                    self.episode_rewards["new_regions"] += NEW_REGIONS_REWARD
 
-                    # Reward for visiting new regions (all phases)
-                    if len(self.regions_visited) > self.steps_taken / 30:
-                        region_reward = 0.2
-                        reward += region_reward
-                        reward_components["new_regions"] = region_reward
-                        self.episode_rewards["new_regions"] += region_reward
         else:
             # === RESCUE PHASE (after target found) ===
 
             # Check if rescue is complete
             if self.current_position == self.base_point:
                 # Major reward for completing the rescue mission
-                rescue_reward = 1000.0
-                reward += rescue_reward
-                reward_components["rescue_complete"] = rescue_reward
-                self.episode_rewards["rescue_complete"] += rescue_reward
+                reward += RESCUE_COMPLETE_REWARD
+                reward_components["rescue_complete"] = RESCUE_COMPLETE_REWARD
+                self.episode_rewards["rescue_complete"] += RESCUE_COMPLETE_REWARD
                 self.rescue_complete = True
                 terminated = True
                 print_info(
@@ -659,16 +637,17 @@ class InfiniteLinearSearchEnv(gym.Env):
                 # 1. Reward for moving toward base (position 0)
                 if action == 0 and previous_position > self.current_position:
                     # Simple fixed reward for moving toward base
-                    base_progress = 0.5
-                    reward += base_progress
-                    reward_components["base_progress"] = base_progress
-                    self.episode_rewards["base_progress"] += base_progress
+                    reward += BASE_PROGRESS_REWARD
+                    reward_components["base_progress"] = BASE_PROGRESS_REWARD
+                    self.episode_rewards["base_progress"] += BASE_PROGRESS_REWARD
 
                 # 2. Significantly increase penalty for moving away from base during rescue
                 if action == 1:
                     # Stronger penalty the further we move from base
                     # Also increases based on steps taken to add urgency
-                    away_penalty = -1.0 - (0.05 * self.steps_taken / 100)
+                    away_penalty = AWAY_FROM_BASE_PENALTY_BASE + (
+                        AWAY_FROM_BASE_PENALTY_MULTIPLIER * self.steps_taken / 100
+                    )
                     reward += away_penalty
                     reward_components["away_from_base"] = away_penalty
                     self.episode_rewards["away_from_base"] += away_penalty
@@ -696,12 +675,11 @@ class InfiniteLinearSearchEnv(gym.Env):
 
                     if oscillation_detected:
                         # Apply a strong oscillation penalty to break the loop
-                        oscillation_penalty = -5.0  # Increased penalty
-                        reward += oscillation_penalty
-                        reward_components["oscillation"] = oscillation_penalty
+                        reward += OSCILLATION_PENALTY
+                        reward_components["oscillation"] = OSCILLATION_PENALTY
                         if "oscillation" not in self.episode_rewards:
                             self.episode_rewards["oscillation"] = 0
-                        self.episode_rewards["oscillation"] += oscillation_penalty
+                        self.episode_rewards["oscillation"] += OSCILLATION_PENALTY
 
         # Update target position if moving (only during search phase)
         if self.move_target and not self.target_found:

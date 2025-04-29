@@ -26,7 +26,7 @@ def test_policy_ui(
     Q: Dict[Tuple, Dict[int, float]],
     actions: List[int],
     max_steps: int = 5000,
-    delay: int = 300,  # Slower movement speed for better visualization
+    delay: int = 0,
     mode: str = "test",
     num_episodes: int = 1,
     alpha: float = 0.6,

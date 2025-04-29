@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Tuple
 
 from src.environment import InfiniteLinearSearchEnv
 from src.qlearning import observation_to_state
-from src.ui_utils import print_info
 
 
 class EnvironmentVisualizer:
@@ -40,12 +39,6 @@ class EnvironmentVisualizer:
         visible_range = self.current_max_visible - self.current_min_visible
         scale = self.canvas_width / visible_range
         return int((actual_position - self.current_min_visible) * scale)
-
-    def canvas_to_x(self, canvas_x: int) -> int:
-        """Convert a canvas x-coordinate to actual position."""
-        visible_range = self.current_max_visible - self.current_min_visible
-        scale = self.canvas_width / visible_range
-        return int(canvas_x / scale + self.current_min_visible)
 
     def update_visible_range(self, position: int, target_pos: int = None) -> bool:
         """Update the visible range based on agent and target positions."""
@@ -205,8 +198,6 @@ class EnvironmentVisualizer:
         reward=0.0,
         search_phase=0,
         target_found=False,
-        reward_components=None,
-        action=None,
     ):
         """Update information panel with current status."""
         variables["steps"].set(f"Steps: {steps}")
@@ -326,7 +317,6 @@ def update_step(
 
     # Update the agent and target markers
     agent_x = visualizer.update_agent_position(env.current_position)
-    target_x = visualizer.update_target_position(env.target)
 
     # Update phases based on search phase
     if info.get("search_phase", 0) != visualizer.last_search_phase:
@@ -340,8 +330,6 @@ def update_step(
         reward=reward,
         search_phase=info.get("search_phase", 0),
         target_found=env.target_found,
-        reward_components=info.get("reward_components", {}),
-        action=action,
     )
 
     # Update info labels
@@ -354,7 +342,6 @@ def update_step(
     # Update region visitation count
     regions_visited_count = len(env.regions_visited)
     variables["visit_count"].set(f"Regions visited: {regions_visited_count}")
-    variables["regions"].set(f"Regions: {regions_visited_count}")
 
     # Check if the agent is on the target
     if env.target_found and env.rescue_complete:
