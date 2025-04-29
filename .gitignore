@@ -54,3 +54,6 @@ dmypy.json
 
 # VSCode settings (optional)
 .vscode/
+
+# saved weights folder
+saved_weights/
