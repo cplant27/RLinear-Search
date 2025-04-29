@@ -36,6 +36,15 @@ def create_info_frame(root, variables: Dict[str, tk.StringVar]) -> tk.Frame:
         position_frame, textvariable=variables["current_reward"], font=("Arial", 10)
     ).pack(side=tk.LEFT, padx=10)
 
+    # Test round indicator (if available)
+    if "test_round" in variables:
+        test_round_label = tk.Label(
+            position_frame,
+            textvariable=variables["test_round"],
+            font=("Arial", 10, "bold"),
+        )
+        test_round_label.pack(side=tk.LEFT, padx=10)
+
     return info_frame
 
 

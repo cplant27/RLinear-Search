@@ -48,44 +48,33 @@ def observation_to_state(observation: Dict[str, Any]) -> Tuple:
     Returns:
         A tuple representing the state with quantized values
     """
-    # Extract values from observation and convert numpy arrays to Python primitives
-    relative_position = float(observation["relative_position"][0])
-    direction = int(observation["direction"][0])
-    target_found = int(observation["target_found"][0])
-    distance_to_base = float(observation["distance_to_base"][0])
-    search_phase = int(observation["search_phase"][0])
-    farthest_right_rel = float(observation["farthest_right_rel"][0])
+    # Extract values from observation
+    # Note: environment now returns correct types, no need for np.array indexing [0]
+    direction = observation["direction"]
+    target_found = observation["target_found"]
+    distance_to_base = float(
+        observation["distance_to_base"][0]
+    )  # Still need float from array
+    search_phase = observation["search_phase"]
+    farthest_right_rel = float(
+        observation["farthest_right_rel"][0]
+    )  # Use correct key, need float from array
 
-    # Quantize relative position to reduce state space
-    if abs(relative_position) < 20:
-        # Near target - fine quantization
-        quantized_position = int(relative_position)
-    elif abs(relative_position) < 100:
-        # Medium distance - medium quantization
-        quantized_position = int(relative_position / 5) * 5
-    else:
-        # Far distance - coarse quantization
-        quantized_position = int(relative_position / 20) * 20
-
-    # Quantize distance to base for rescue phase
+    # Quantize distance to base
     if distance_to_base < 20:
-        # Near base - fine quantization
         quantized_base_distance = int(distance_to_base)
     elif distance_to_base < 100:
-        # Medium distance - medium quantization
         quantized_base_distance = int(distance_to_base / 5) * 5
     else:
-        # Far distance - coarse quantization
         quantized_base_distance = int(distance_to_base / 20) * 20
 
-    # Quantize farthest right position
-    quantized_farthest_right = int(farthest_right_rel / 50) * 50
+    # Quantize farthest right relative position
+    quantized_farthest_right_rel = int(farthest_right_rel / 50) * 50
 
-    # Create a hashable state tuple
+    # Create a hashable state tuple (removed quantized_position)
     return (
-        quantized_position,
         direction,
-        quantized_farthest_right,
+        quantized_farthest_right_rel,
         target_found,
         quantized_base_distance,
         search_phase,
@@ -109,7 +98,6 @@ def choose_action(
     """
     # Extract information from state
     (
-        position,
         direction,
         farthest_right,
         target_found,

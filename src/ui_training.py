@@ -21,6 +21,7 @@ def train_environment(
     alpha: float = 0.6,
     gamma: float = 0.99,
     epsilon: float = 0.8,
+    delay: int = 1,  # Add delay parameter for controlling visualization speed
 ):
     """Run training with visualization for the specified number of episodes."""
     efficiency_ratios = []  # Track efficiency ratios
@@ -179,6 +180,9 @@ def train_environment(
             # Only update UI every few steps for better performance
             if steps % 5 == 0:
                 root.update()
+                # Add delay to control visualization speed
+                if delay > 0:
+                    time.sleep(delay / 1000)  # Convert ms to seconds
 
             # Detect terminal state
             if steps >= env.max_steps:

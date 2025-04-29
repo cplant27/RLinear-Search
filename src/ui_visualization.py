@@ -205,6 +205,8 @@ class EnvironmentVisualizer:
         reward=0.0,
         search_phase=0,
         target_found=False,
+        reward_components=None,
+        action=None,
     ):
         """Update information panel with current status."""
         variables["steps"].set(f"Steps: {steps}")
@@ -222,7 +224,7 @@ class EnvironmentVisualizer:
                 status_str = "Exploring..."
 
         variables["status"].set(status_str)
-        variables["current_reward"].set(f"Reward: {reward:.2f}")
+        variables["current_reward"].set(f"Total Reward: {reward:.2f}")
 
         # Update phase indicator
         if target_found:
@@ -303,6 +305,8 @@ def update_step(
     """Update one step of the visualization."""
     if steps >= max_steps:
         print("Reached maximum step limit.")
+        # Print competitive ratio when reaching max steps
+        env.print_competitive_ratio()
         return steps
 
     # Get current observation and convert to state tuple
@@ -329,13 +333,15 @@ def update_step(
         visualizer.last_search_phase = info.get("search_phase", 0)
         visualizer.add_phase_marker(agent_x, visualizer.last_search_phase)
 
-    # Update info panel with current status
+    # Update info panel with current status and reward breakdown
     visualizer.update_info_panel(
         variables,
         steps=steps,
         reward=reward,
         search_phase=info.get("search_phase", 0),
         target_found=env.target_found,
+        reward_components=info.get("reward_components", {}),
+        action=action,
     )
 
     # Update info labels
@@ -356,6 +362,9 @@ def update_step(
         visualizer.highlight_success(True)
         print(f"Mission complete! Agent returned to base in {steps} steps!")
 
+        # Print competitive ratio when mission complete
+        env.print_competitive_ratio()
+
         # Create a success message on the canvas
         visualizer.canvas.create_text(
             visualizer.canvas_width // 2,
@@ -369,10 +378,18 @@ def update_step(
     if done:
         print(f"Target found at position {env.current_position} in {steps} steps!")
         visualizer.highlight_success(True)
+
+        # Print competitive ratio when target found
+        env.print_competitive_ratio()
+
         return steps
 
     if truncated:
         print(f"Maximum steps reached: {steps}")
+
+        # Print competitive ratio when maximum steps reached
+        env.print_competitive_ratio()
+
         visualizer.canvas.create_text(
             visualizer.canvas_width // 2,
             visualizer.y_position - 60,

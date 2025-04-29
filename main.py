@@ -6,13 +6,13 @@ from src.ui_main import load_q_table_wrapped, test_policy_ui
 def main(load_weights=None):
     print("Initializing configuration parameters...")
     # Configuration parameters.
-    actions = [0, 1]  # 0: left, 1: right.
+    actions = [0, 1, 2]  # 0: left, 1: right, 2: signal return to base
 
     # Learning parameters
     alpha = 0.6  # Learning rate
     gamma = 0.99  # Discount factor
     epsilon = 0.2  # Exploration rate (reduced from 0.8)
-    num_episodes = 1000  # Number of training episodes
+    num_episodes = 500  # Number of training episodes
 
     print("Initializing search and rescue environment...")
     # Initialize the environment with infinite line and moving target
@@ -47,6 +47,7 @@ def main(load_weights=None):
             alpha=alpha,
             gamma=gamma,
             epsilon=epsilon,
+            delay=0,  # Set delay to 0 for fastest training visualization
         )
 
     print("Training complete. Resetting environment for testing...")
@@ -54,14 +55,21 @@ def main(load_weights=None):
     _, _ = env.reset()
 
     # Display the target positions
-    target_positions = ", ".join(
-        [f"Target {id} at position {pos}" for id, pos in env.targets]
-    )
+    target_positions = f"Target at position {env.target}"
     print(f"Testing learned policy: {target_positions}")
 
     test_policy_ui(
-        env, Q, actions, delay=500
-    )  # Set delay to 500ms for slower visualization
+        env,
+        Q,
+        actions,
+        mode="test",  # Keep it in test mode
+        num_episodes=num_episodes,
+        alpha=alpha,
+        gamma=gamma,
+        epsilon=epsilon,
+        delay=1,  # Keep the faster visualization in testing (updated delay)
+        num_test_rounds=100,  # Run 100 test rounds (updated rounds)
+    )  # Set delay to 5ms for faster visualization
 
     print("Visualization complete.")
 
