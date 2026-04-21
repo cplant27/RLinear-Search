@@ -2,6 +2,8 @@
 
 This project implements a reinforcement learning agent using Q-learning to solve a search and rescue task on a semi-infinite line (`[0, +infinity)`). The agent learns to find a potentially moving target and return it to the base (position 0). The simulation includes a Tkinter-based UI for visualizing the agent's behavior during training and testing.
 
+Based on the paper: [Search and Rescue on an Infinite Line](https://anrg.usc.edu/www/papers/search_and_rescue.pdf)
+
 The core logic is built using the Gymnasium library for the environment definition and standard Python libraries for the Q-learning algorithm and UI.
 
 ## Project Structure
