@@ -14,7 +14,6 @@ The core logic is built using the Gymnasium library for the environment definiti
 ├── requirements.txt        # Project dependencies
 ├── README.md               # This file
 ├── .gitignore
-├── gymnasium_tutorial.py   # Separate Blackjack Q-learning example (not part of main project)
 ├── saved_weights/          # Directory to save/load trained Q-tables (e.g., q_table_latest.pkl)
 └── src/
     ├── environment.py        # Defines the InfiniteLinearSearchEnv Gymnasium environment
