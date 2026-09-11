@@ -49,8 +49,8 @@ The `InfiniteLinearSearchEnv` simulates:
 
 1.  **Clone the repository (if applicable):**
     ```bash
-    git clone <your-repo-url>
-    cd <your-repo-directory>
+    git clone https://github.com/cplant27/RLinear-Search.git
+    cd RLinear-Search
     ```
 2.  **Create a virtual environment (recommended):**
     ```bash
